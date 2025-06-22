@@ -2,7 +2,7 @@ package org.example;
 
 import org.example.dao.UserDAO;
 import org.example.dao.impl.UserDAOImpl;
-import org.example.entityes.User;
+import org.example.entities.User;
 import org.hibernate.SessionFactory;
 import org.hibernate.boot.MetadataSources;
 import org.hibernate.boot.registry.StandardServiceRegistry;
