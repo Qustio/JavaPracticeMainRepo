@@ -5,9 +5,11 @@ import org.example.entities.User;
 import java.util.List;
 
 public interface UserDAO {
-    void save(User user);
+    User save(User user);
 
     User findById(long id);
+
+    User findByEmail(String email);
 
     List<User> findAll();
 

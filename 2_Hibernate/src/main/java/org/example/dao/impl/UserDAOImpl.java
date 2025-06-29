@@ -1,6 +1,8 @@
 package org.example.dao.impl;
 
 import org.example.entities.User;
+import org.example.exceptions.DataAccessException;
+import org.hibernate.HibernateException;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.Transaction;
@@ -11,68 +13,70 @@ import java.util.List;
 
 public class UserDAOImpl implements org.example.dao.UserDAO {
     private final SessionFactory sessionFactory;
-    private static final Logger log = LoggerFactory.getLogger(UserDAOImpl.class);
 
     public UserDAOImpl(SessionFactory sessionFactory) {
         this.sessionFactory = sessionFactory;
-        log.info("Created UserDAO");
     }
 
     @Override
-    public void save(User user) {
-        log.info("Saving user {}", user);
+    public User save(User user) {
         try (Session session = sessionFactory.openSession()) {
             Transaction tx = session.beginTransaction();
             session.persist(user);
             tx.commit();
+            return user;
         } catch (Exception e) {
-            log.error("Error saving user", e);
+            throw new DataAccessException("Error saving user");
         }
     }
 
     @Override
     public User findById(long id) {
-        log.info("Getting user by id {}", id);
         try (Session session = sessionFactory.openSession()) {
             return session.find(User.class, id);
         } catch (Exception e) {
-            log.error("Error getting user", e);
+            throw new DataAccessException("Error finding user by id");
         }
-        return null;
+    }
+
+    @Override
+    public User findByEmail(String email) {
+        try (Session session = sessionFactory.openSession()) {
+            return session.createQuery("FROM User WHERE email = :email", User.class)
+                .setParameter("email", email).list().getFirst();
+        } catch (Exception e) {
+            throw new DataAccessException("Error finding user by email");
+        }
     }
 
     @Override
     public List<User> findAll() {
-        log.info("Getting all users");
         try (Session session = sessionFactory.openSession()) {
             return session.createQuery("FROM User", User.class).list();
         } catch (Exception e) {
-            log.error("Error getting all users", e);
+            throw new DataAccessException("Error getting all users");
         }
-        return null;
     }
 
     @Override
     public void update(User user) {
-        log.info("Updating user {}", user);
         try (Session session = sessionFactory.openSession()) {
             Transaction tx = session.beginTransaction();
             session.merge(user); // or session.update(user)
             tx.commit();
         } catch (Exception e) {
-            log.error("Error updating user", e);
+            throw new DataAccessException("Error updating user");
         }
     }
 
     @Override
     public void delete(User user) {
-        log.info("Deleting user {}", user);
         try (Session session = sessionFactory.openSession()) {
             Transaction tx = session.beginTransaction();
             session.remove(user);
             tx.commit();
         } catch (Exception e) {
-            log.error("Error deleting user", e);
+            throw new DataAccessException("Error deleting user");
         }
     }
 }

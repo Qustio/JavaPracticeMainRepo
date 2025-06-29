@@ -3,6 +3,8 @@ package org.example;
 import org.example.dao.UserDAO;
 import org.example.dao.impl.UserDAOImpl;
 import org.example.entities.User;
+import org.example.exceptions.EmailExistsError;
+import org.example.services.UserService;
 import org.hibernate.SessionFactory;
 import org.hibernate.boot.MetadataSources;
 import org.hibernate.boot.registry.StandardServiceRegistry;
@@ -23,14 +25,12 @@ public class Main {
 
     public static void main(String[] args) {
         setUp();
-
-        var user = new User("maxine", "max@email.com", 22, OffsetDateTime.now());
         UserDAO userDAO = new UserDAOImpl(sessionFactory);
-        //userDAO.findAll().forEach(System.out::println);
-        tui(userDAO);
+        var userService = new UserService(userDAO);
+        tui(userService);
     }
 
-    static void tui(UserDAO userDAO) {
+    static void tui(UserService userService) {
         while (true) {
             System.out.println("\nUser Management Console");
             System.out.println("1. Create user");
@@ -43,11 +43,11 @@ public class Main {
 
             String input = scanner.nextLine();
             switch (input) {
-                case "1" -> createUser(userDAO);
-                case "2" -> listUsers(userDAO);
-                case "3" -> findUserById(userDAO);
-                case "4" -> updateUser(userDAO);
-                case "5" -> deleteUser(userDAO);
+                case "1" -> createUser(userService);
+                case "2" -> listUsers(userService);
+                case "3" -> findUserById(userService);
+                case "4" -> updateUser(userService);
+                case "5" -> deleteUser(userService);
                 case "0" -> {
                     System.out.println("Exiting...");
                     return;
@@ -57,7 +57,7 @@ public class Main {
         }
     }
 
-    static void createUser(UserDAO userDAO) {
+    static void createUser(UserService userService) {
         System.out.print("Name: ");
         String name = scanner.nextLine();
 
@@ -67,39 +67,56 @@ public class Main {
         System.out.print("Age: ");
         Integer age = Integer.parseInt(scanner.nextLine());
 
-        User user = new User(name, email, age, OffsetDateTime.now());
-        userDAO.save(user);
-        System.out.println("User created with ID: " + user.getId());
-    }
-
-    static void listUsers(UserDAO userDAO) {
-        List<User> users = userDAO.findAll();
-        if (users.isEmpty()) {
-            System.out.println("No users found.");
-            return;
-        }
-        for (User u : users) {
-            System.out.printf("%d: %s (%s), age %d, created at %s%n",
-                    u.getId(), u.getName(), u.getEmail(), u.getAge(), u.getCreatedAt());
+        var user = new User(name, email, age, OffsetDateTime.now());
+        try {
+            var u = userService.saveUser(user);
+            System.out.println("User created with ID: " + u.getId());
+        } catch (EmailExistsError e) {
+            System.out.println("Email "+ e.email +" already exists");
+        } catch (Exception e) {
+            log.error(e.getMessage());
         }
     }
 
-    static void findUserById(UserDAO userDAO) {
+    static void listUsers(UserService userService) {
+        List<User> users;
+        try {
+            users = userService.getAllUsers();
+            if (users.isEmpty()) {
+                System.out.println("No users found.");
+                return;
+            }
+            for (User u : users) {
+                System.out.printf("%d: %s (%s), age %d, created at %s%n",
+                        u.getId(), u.getName(), u.getEmail(), u.getAge(), u.getCreated_at());
+            }
+        } catch (Exception e) {
+            log.error(e.getMessage());
+        }
+    }
+
+    static void findUserById(UserService userService) {
         System.out.print("Enter user ID: ");
         long id = Long.parseLong(scanner.nextLine());
-        User user = userDAO.findById(id);
+        User user = userService.getUser(id);
         if (user == null) {
             System.out.println("User not found.");
         } else {
             System.out.printf("%d: %s (%s), age %d, created at %s%n",
-                    user.getId(), user.getName(), user.getEmail(), user.getAge(), user.getCreatedAt());
+                    user.getId(), user.getName(), user.getEmail(), user.getAge(), user.getCreated_at());
         }
     }
 
-    static void updateUser(UserDAO userDAO) {
+    static void updateUser(UserService userService) {
         System.out.print("Enter user ID to update: ");
         long id = Long.parseLong(scanner.nextLine());
-        User user = userDAO.findById(id);
+        User user = null;
+        try {
+            user = userService.getUser(id);
+        } catch (Exception e) {
+            log.error(e.getMessage());
+        }
+
         if (user == null) {
             System.out.println("User not found.");
             return;
@@ -117,41 +134,45 @@ public class Main {
         String ageStr = scanner.nextLine();
         if (!ageStr.isBlank()) user.setAge(Integer.parseInt(ageStr));
 
-        userDAO.update(user);
-        System.out.println("User updated.");
+        try {
+            userService.updateUser(user);
+            System.out.println("User updated.");
+        } catch (EmailExistsError e) {
+            System.out.println("Email "+ e.email +" already exists");
+        } catch (Exception e) {
+            log.error(e.getMessage());
+        }
     }
 
-    static void deleteUser(UserDAO userDAO) {
+    static void deleteUser(UserService userService) {
         System.out.print("Enter user ID to delete: ");
         long id = Long.parseLong(scanner.nextLine());
-        User user = userDAO.findById(id);
-        if (user == null) {
-            System.out.println("User not found.");
-            return;
+        try {
+            User user = userService.getUser(id);
+            if (user == null) {
+                System.out.println("User not found.");
+                return;
+            }
+            userService.deleteUser(user);
+            System.out.println("User deleted.");
+        } catch (Exception e) {
+            log.error(e.getMessage());
         }
-        userDAO.delete(user);
-        System.out.println("User deleted.");
     }
 
     static void setUp() {
         log.info("Setting up...");
 
         final StandardServiceRegistry registry =
-                new StandardServiceRegistryBuilder()
-                        .build();
+            new StandardServiceRegistryBuilder().build();
         try {
-            sessionFactory =
-                    new MetadataSources(registry)
-                            .addAnnotatedClass(User.class)
-                            .buildMetadata()
-                            .buildSessionFactory();
-
+            sessionFactory = new MetadataSources(registry)
+                .addAnnotatedClass(User.class)
+                .buildMetadata()
+                .buildSessionFactory();
         }
         catch (Exception e) {
-            // The registry would be destroyed by the SessionFactory, but we
-            // had trouble building the SessionFactory so destroy it manually.
             StandardServiceRegistryBuilder.destroy(registry);
-            System.out.println("AAAAAAAAAAAAAAA");
         }
     }
 }
