@@ -1,19 +1,11 @@
 package org.example.dao;
 
 import org.example.entities.User;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+import java.util.Optional;
 
-import java.util.List;
-
-public interface UserDAO {
-    User save(User user);
-
-    User findById(long id);
-
-    User findByEmail(String email);
-
-    List<User> findAll();
-
-    void update(User user);
-
-    void delete(User user);
+@Repository
+public interface UserDAO  extends JpaRepository<User, Long> {
+    Optional<User> findByEmail(String email);
 }

@@ -1,19 +1,17 @@
 package org.example.entities;
 
 import jakarta.persistence.*;
-import lombok.AccessLevel;
-import lombok.Data;
-import lombok.Setter;
+import lombok.*;
 
 import java.time.OffsetDateTime;
 
 @Entity
 @Table(name = "Users")
 @Data
+@AllArgsConstructor
 public class User {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Setter(AccessLevel.NONE)
     private long id;
 
     @Column

@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -29,11 +30,13 @@ class UserServiceTest {
         User user = new User();
         user.setEmail("test@example.com");
 
-        when(userDAO.findByEmail("test@example.com")).thenReturn(null); // email свободен
+        when(userDAO.findByEmail("test@example.com")).thenReturn(Optional.empty()); // email свободен
 
         userService.saveUser(user);
 
         verify(userDAO).save(user);
+
+
     }
 
     @Test
@@ -41,10 +44,15 @@ class UserServiceTest {
         User user = new User();
         user.setEmail("test@example.com");
 
-        when(userDAO.findByEmail("test@example.com")).thenReturn(new User());
+        when(userDAO.findByEmail("test@example.com")).thenReturn(Optional.of(new User()));
 
         assertThrows(EmailExistsError.class, () -> userService.saveUser(user));
 
+        Exception exception = assertThrows(RuntimeException.class, () -> {
+            userService.saveUser(user); // or your controller method calling it
+        });
+
+        assertEquals("A user with email test@example.com already exists.", exception.getMessage());
         verify(userDAO, never()).save(any());
     }
 
@@ -54,12 +62,12 @@ class UserServiceTest {
 
         long userId = 1L;
 
-        when(userDAO.findById(userId)).thenReturn(user);
+        when(userDAO.findById(userId)).thenReturn(Optional.of(user));
 
-        User result = userService.getUser(userId);
+        var result = userService.getUser(userId);
 
         assertNotNull(result);
-        assertEquals(user, result);
+        assertEquals(Optional.of(user), result);
         verify(userDAO).findById(userId);
     }
 
@@ -83,7 +91,7 @@ class UserServiceTest {
 
         userService.updateUser(user);
 
-        verify(userDAO).update(user);
+        verify(userDAO).save(user);
     }
 
     @Test
