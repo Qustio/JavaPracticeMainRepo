@@ -97,18 +97,9 @@ class UserServiceTest {
     @Test
     void deleteUser() {
         User user = new User();
-        List<User> users = new ArrayList<>();
-        users.add(user);
-
-        when(userDAO.findAll()).thenAnswer(invocation -> new ArrayList<>(users));
-        doAnswer(invocation -> {
-            users.remove(user);
-            return null;
-        }).when(userDAO).delete(user);
 
         userService.deleteUser(user);
-        var result = userService.getAllUsers();
 
-        assertEquals(0, result.size());
+        verify(userDAO).delete(user);
     }
 }
