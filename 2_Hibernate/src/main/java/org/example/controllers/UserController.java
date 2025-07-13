@@ -1,10 +1,12 @@
 package org.example.controllers;
 
+import events.UserEvent;
 import org.example.dto.UserDTO;
 import org.example.mappers.UserMapper;
 import org.example.services.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -14,6 +16,7 @@ import java.util.List;
 class UserController {
     private final UserService userService;
     private final UserMapper userMapper;
+
 
     @Autowired
     public UserController(UserService userService, UserMapper userMapper) {
@@ -34,19 +37,19 @@ class UserController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    @PostMapping("/create")
+    @PutMapping("/create")
     public ResponseEntity<UserDTO> createUser(@RequestBody UserDTO userDTO) {
         var user = userService.saveUser(userMapper.fromDto(userDTO));
         return ResponseEntity.ok(userMapper.toDto(user));
     }
 
-    @PostMapping("/update")
+    @PutMapping("/update")
     public ResponseEntity<UserDTO> updateUser(@RequestBody UserDTO userDTO) {
         var updatedUser = userService.updateUser(userMapper.fromDto(userDTO));
         return ResponseEntity.ok(userMapper.toDto(updatedUser));
     }
 
-    @PostMapping("/delete")
+    @DeleteMapping("/delete")
     public ResponseEntity<Void> deleteUser(@RequestBody long id) {
         var user = userService.getUser(id);
         if (user.isEmpty()) {

@@ -65,7 +65,7 @@ class UserControllerTest {
         String json = new ObjectMapper().writeValueAsString(user);
 
         mockMvc.perform(
-            post("/users/create")
+            put("/users/create")
                 .contentType(String.valueOf(MediaType.APPLICATION_JSON))
                 .content(json)
         )
@@ -86,7 +86,7 @@ class UserControllerTest {
         String json = new ObjectMapper().writeValueAsString(user);
 
         mockMvc.perform(
-                        post("/users/update")
+                        put("/users/update")
                                 .contentType(String.valueOf(MediaType.APPLICATION_JSON))
                                 .content(json)
                 )
@@ -107,7 +107,7 @@ class UserControllerTest {
         String json = new ObjectMapper().writeValueAsString(1L);
 
         mockMvc.perform(
-                        post("/users/delete")
+                        delete("/users/delete")
                                 .contentType(String.valueOf(MediaType.APPLICATION_JSON))
                                 .content(json)
                 )

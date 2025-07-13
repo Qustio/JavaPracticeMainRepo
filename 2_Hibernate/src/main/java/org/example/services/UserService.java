@@ -1,11 +1,13 @@
 package org.example.services;
 
+import events.UserEvent;
 import org.example.dao.UserDAO;
 import org.example.entities.User;
 import org.example.exceptions.EmailExistsError;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -16,8 +18,12 @@ public class UserService {
     @Autowired
     private final UserDAO userDAO;
 
-    public UserService(UserDAO userDAO) {
+    @Autowired
+    private final KafkaTemplate<String, UserEvent> kafkaTemplate;
+
+    public UserService(UserDAO userDAO, KafkaTemplate<String, UserEvent> kafkaTemplate) {
         this.userDAO = userDAO;
+        this.kafkaTemplate = kafkaTemplate;
     }
 
     public User saveUser(User user) {
@@ -25,7 +31,10 @@ public class UserService {
         if (u.isPresent()) {
             throw new EmailExistsError(user.getEmail());
         }
-        return userDAO.save(user);
+        userDAO.save(user);
+        var userEvent = new UserEvent(UserEvent.Operation.Created, user.getEmail());
+        kafkaTemplate.send("user-notification-topic", userEvent);
+        return user;
     }
 
     public Optional<User> getUser(long id) {
@@ -49,6 +58,9 @@ public class UserService {
     }
 
     public void deleteUser(User user) {
+        var email = user.getEmail();
         userDAO.delete(user);
+        var userEvent = new UserEvent(UserEvent.Operation.Deleted, email);
+        kafkaTemplate.send("user-notification-topic", userEvent);
     }
 }

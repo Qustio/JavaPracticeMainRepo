@@ -1,10 +1,14 @@
 package org.example.services;
 
+import events.UserEvent;
 import org.example.dao.UserDAO;
 import org.example.entities.User;
 import org.example.exceptions.EmailExistsError;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.mock.mockito.SpyBean;
+import org.springframework.kafka.core.KafkaTemplate;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -15,14 +19,15 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 class UserServiceTest {
-
     private UserDAO userDAO;
     private UserService userService;
+    private KafkaTemplate<String, UserEvent> kafkaTemplate;
 
     @BeforeEach
     void setUp() {
         userDAO = mock(UserDAO.class);
-        userService = new UserService(userDAO);
+        kafkaTemplate = mock(KafkaTemplate.class);
+        userService = new UserService(userDAO, kafkaTemplate);
     }
 
     @Test
@@ -33,6 +38,8 @@ class UserServiceTest {
         when(userDAO.findByEmail("test@example.com")).thenReturn(Optional.empty()); // email свободен
 
         userService.saveUser(user);
+
+        verify(kafkaTemplate, times(1)).send(anyString(), any(UserEvent.class));
 
         verify(userDAO).save(user);
 
