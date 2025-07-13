@@ -4,6 +4,7 @@ import events.UserEvent;
 import org.example.dao.UserDAO;
 import org.example.entities.User;
 import org.example.exceptions.EmailExistsError;
+import org.hibernate.boot.beanvalidation.GroupsPerOperation;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,11 +40,12 @@ class UserServiceTest {
 
         userService.saveUser(user);
 
-        verify(kafkaTemplate, times(1)).send(anyString(), any(UserEvent.class));
-
+        verify(kafkaTemplate, times(1))
+                .send(
+                        eq("user-notification-topic"),
+                        argThat(userEvent -> userEvent.getOperation() == UserEvent.Operation.Created && userEvent.getEmail() == "test@example.com")
+                );
         verify(userDAO).save(user);
-
-
     }
 
     @Test
@@ -60,6 +62,7 @@ class UserServiceTest {
         });
 
         assertEquals("A user with email test@example.com already exists.", exception.getMessage());
+        verify(kafkaTemplate, times(0)).send(anyString(), any(UserEvent.class));
         verify(userDAO, never()).save(any());
     }
 
@@ -104,9 +107,15 @@ class UserServiceTest {
     @Test
     void deleteUser() {
         User user = new User();
+        user.setEmail("test@example.com");
 
         userService.deleteUser(user);
 
+        verify(kafkaTemplate, times(1))
+                .send(
+                        eq("user-notification-topic"),
+                        argThat(userEvent -> userEvent.getOperation() == UserEvent.Operation.Deleted && userEvent.getEmail() == "test@example.com")
+                );
         verify(userDAO).delete(user);
     }
 }
